@@ -1,0 +1,170 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Auth API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login with username and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequestDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns access and refresh tokens",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LoginResponseDto" }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterRequestDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration result",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RegisterResponseDto" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout and invalidate refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LogoutRequestDto" }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Successfully logged out" },
+          "401": { "description": "Invalid token" }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Refresh access token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RefreshRequestDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Returns new access token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RefreshResponseDto" }
+              }
+            }
+          },
+          "401": { "description": "Invalid or expired token" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "LoginRequestDto": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "minLength": 4 },
+          "password": { "type": "string", "minLength": 8 }
+        }
+      },
+      "LoginResponseDto": {
+        "type": "object",
+        "properties": {
+          "access_token": { "type": "string" },
+          "refresh_token": { "type": "string" }
+        }
+      },
+      "RegisterRequestDto": {
+        "type": "object",
+        "required": ["username", "password", "first_name", "last_name", "email", "birth_date", "gender"],
+        "properties": {
+          "username": { "type": "string", "minLength": 4 },
+          "password": { "type": "string", "minLength": 8 },
+          "role": { "type": "string", "enum": ["P", "D", "A"], "default": "P" },
+          "first_name": { "type": "string", "minLength": 1 },
+          "last_name": { "type": "string", "minLength": 1 },
+          "patronymic": { "type": "string", "nullable": true },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string", "nullable": true },
+          "birth_date": { "type": "string", "format": "date" },
+          "gender": { "type": "string", "enum": ["M", "F"] }
+        }
+      },
+      "RegisterResponseDto": {
+        "type": "object",
+        "properties": {
+          "result": { "type": "integer", "enum": [0, 1, 2], "description": "0=Success, 1=Duplicate, 2=Error" },
+          "user_id": { "type": "string", "nullable": true }
+        }
+      },
+      "LogoutRequestDto": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": { "type": "string", "minLength": 96, "maxLength": 96 }
+        }
+      },
+      "RefreshRequestDto": {
+        "type": "object",
+        "required": ["token"],
+        "properties": {
+          "token": { "type": "string", "minLength": 96, "maxLength": 96 }
+        }
+      },
+      "RefreshResponseDto": {
+        "type": "object",
+        "properties": {
+          "access_token": { "type": "string" }
+        }
+      }
+    }
+  }
+}
