@@ -46,15 +46,23 @@ const extractMessage = (payload: unknown, fallback: string) => {
     const text = payload.trim();
     if (/<!doctype html|<html|<body|<pre>/i.test(text)) return fallback;
     if (/^bad request$/i.test(text)) return fallback;
+    if (/^invalid username or password$/i.test(text)) return fallback;
     return text;
   }
 
   if (payload && typeof payload === "object" && "message" in payload) {
     const message = (payload as { message?: unknown }).message;
+    if (typeof message === "string" && /^invalid username or password$/i.test(message.trim())) return fallback;
     if (typeof message === "string" && message.trim()) return message;
   }
 
   return fallback;
+};
+
+const fallbackMessageForStatus = (status: number) => {
+  if (status === 400) return "Проверьте корректность введенных данных.";
+  if (status === 401) return "Неверный логин или пароль.";
+  return `Запрос завершился ошибкой (${status}).`;
 };
 
 export const createApiClient = (baseUrl: string, sessionBridge: SessionBridge): ApiClient => {
@@ -124,10 +132,7 @@ export const createApiClient = (baseUrl: string, sessionBridge: SessionBridge): 
 
     const payload = await parseResponse(response);
     if (!response.ok) {
-      const fallback =
-        response.status === 400 ? "Проверьте корректность введенных данных." : `Запрос завершился ошибкой (${response.status})`;
-
-      throw new ApiError(extractMessage(payload, fallback), response.status, payload);
+      throw new ApiError(extractMessage(payload, fallbackMessageForStatus(response.status)), response.status, payload);
     }
 
     return payload as T;
