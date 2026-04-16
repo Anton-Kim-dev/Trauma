@@ -52,7 +52,7 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
       setPatients(patientList);
       setAppointments(appointmentList);
     } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить админ-панель.");
+      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить административный раздел.");
     } finally {
       setLoading(false);
     }
@@ -67,7 +67,7 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
       {requestError ? <div className="notice notice-error">{requestError}</div> : null}
       {message ? <div className="notice notice-success">{message}</div> : null}
 
-      <Panel eyebrow="Администрирование" title="Создать пользователя">
+      <Panel eyebrow="Пользователи" title="Создать пользователя">
         <form
           className="form-grid form-grid-columns"
           onSubmit={(event) => {
@@ -84,7 +84,7 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
                   throw new Error(
                     response.result === 1
                       ? "Пользователь с таким логином уже существует."
-                      : "Backend не смог создать пользователя.",
+                      : "Не удалось создать пользователя.",
                   );
                 }
 
@@ -108,7 +108,7 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
             options={[
               { label: "Пациент", value: "P" },
               { label: "Врач", value: "D" },
-              { label: "Админ", value: "A" },
+              { label: "Администратор", value: "A" },
             ]}
             required
             value={userForm.role}
@@ -193,7 +193,7 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
         </form>
       </Panel>
 
-      <Panel eyebrow="Общий реестр" title="appointments/get">
+      <Panel eyebrow="Приемы" title="Журнал записей">
         {loading ? (
           <p className="muted-text">Загрузка записей...</p>
         ) : (
@@ -209,11 +209,11 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
                 </div>
                 <dl className="record-meta">
                   <div>
-                    <dt>Время</dt>
+                    <dt>Дата и время</dt>
                     <dd>{formatDateTime(appointment.start_time)}</dd>
                   </div>
                   <div>
-                    <dt>Пациент</dt>
+                    <dt>Комментарий пациента</dt>
                     <dd>{appointment.patient_notes || "Без комментария"}</dd>
                   </div>
                   <div>
@@ -245,35 +245,6 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
             ))}
           </div>
         )}
-      </Panel>
-
-      <Panel eyebrow="Справочники users" title="Врачи и пациенты">
-        <div className="split-grid">
-          <div className="directory-table">
-            <div className="directory-row directory-row-head">
-              <span>Врач</span>
-              <span>Специальность</span>
-            </div>
-            {doctors.map((doctor) => (
-              <div className="directory-row" key={doctor.id}>
-                <span>{personName(doctor)}</span>
-                <span>{doctor.specialty}</span>
-              </div>
-            ))}
-          </div>
-          <div className="directory-table">
-            <div className="directory-row directory-row-head">
-              <span>Пациент</span>
-              <span>Email</span>
-            </div>
-            {patients.map((patient) => (
-              <div className="directory-row" key={patient.id}>
-                <span>{personName(patient)}</span>
-                <span>{patient.email}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </Panel>
     </div>
   );

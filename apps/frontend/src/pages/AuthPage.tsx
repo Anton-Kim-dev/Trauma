@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { InputField, SelectField } from "../components/FormControls";
 import { Panel } from "../components/Panel";
 import type { LoginRequest, RegisterRequest } from "../types";
@@ -26,42 +26,65 @@ const emptyRegister: RegisterRequest = {
 
 export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) => {
   const [mode, setMode] = useState<AuthMode>("login");
+  const [formError, setFormError] = useState<string | null>(null);
   const [login, setLogin] = useState<LoginRequest>({ username: "", password: "" });
   const [register, setRegister] = useState<RegisterRequest>(emptyRegister);
-  const subtitle = useMemo(
-    () =>
-      mode === "login"
-        ? "Вход работает через /api/auth/login и использует реальные JWT access/refresh токены."
-        : "Регистрация открыта только для пациента и отправляет точный payload backend-схемы /api/auth/register.",
-    [mode],
-  );
+
+  const visibleError = formError ?? error;
+
+  const handleLoginSubmit = () => {
+    const username = login.username.trim();
+    const password = login.password;
+
+    if (!username || !password) {
+      setFormError("Введите логин и пароль.");
+      return;
+    }
+
+    setFormError(null);
+    void onLogin({
+      username,
+      password,
+    });
+  };
+
+  const handleRegisterSubmit = () => {
+    const payload: RegisterRequest = {
+      ...register,
+      birth_date: register.birth_date,
+      email: register.email.trim(),
+      first_name: register.first_name.trim(),
+      last_name: register.last_name.trim(),
+      password: register.password,
+      patronymic: register.patronymic?.trim() || null,
+      phone: register.phone?.trim() || null,
+      username: register.username.trim(),
+    };
+
+    if (payload.username.length < 4) {
+      setFormError("Логин должен содержать не менее 4 символов.");
+      return;
+    }
+
+    if (payload.password.length < 8) {
+      setFormError("Пароль должен содержать не менее 8 символов.");
+      return;
+    }
+
+    if (!payload.first_name || !payload.last_name || !payload.email || !payload.birth_date) {
+      setFormError("Заполните обязательные поля формы.");
+      return;
+    }
+
+    setFormError(null);
+    void onRegister(payload);
+  };
 
   return (
     <div className="page-shell">
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="hero-kicker">Trauma Team / Sync Console</p>
-          <h1>Frontend, сведённый к текущему backend.</h1>
-          <p className="hero-text">
-            В интерфейсе оставлены только рабочие сценарии из сервисов auth, users и appointments:
-            авторизация, регистрация пациента, справочники, записи и управление профилем.
-          </p>
-          <div className="hero-chips">
-            <span>Auth</span>
-            <span>Users</span>
-            <span>Appointments</span>
-            <span>Role aware</span>
-          </div>
-        </div>
-
-        <Panel eyebrow="Контракты backend" title="Актуальные сценарии">
-          <ul className="feature-list">
-            <li>Пациент: регистрация, вход, профиль, список врачей, создание и отмена записи.</li>
-            <li>Врач: вход, профиль врача, свои записи, завершение и отмена приёма.</li>
-            <li>Админ: вход, общий реестр записей, списки пользователей, создание новых учётных записей.</li>
-          </ul>
-          <p className="muted-text">{subtitle}</p>
-        </Panel>
+      <section className="page-intro">
+        <p className="hero-kicker">Личный кабинет</p>
+        <h1>{mode === "login" ? "Вход в кабинет" : "Регистрация пациента"}</h1>
       </section>
 
       <section className="auth-grid">
@@ -70,42 +93,49 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
             <div className="tab-switcher" role="tablist">
               <button
                 className={mode === "login" ? "tab-button is-active" : "tab-button"}
-                onClick={() => setMode("login")}
+                onClick={() => {
+                  setFormError(null);
+                  setMode("login");
+                }}
                 type="button"
               >
                 Вход
               </button>
               <button
                 className={mode === "register" ? "tab-button is-active" : "tab-button"}
-                onClick={() => setMode("register")}
+                onClick={() => {
+                  setFormError(null);
+                  setMode("register");
+                }}
                 type="button"
               >
                 Регистрация
               </button>
             </div>
           }
-          eyebrow="Доступ"
-          title={mode === "login" ? "Войти в систему" : "Создать пациента"}
+          title={mode === "login" ? "Войти" : "Создать учетную запись"}
         >
-          {error ? <div className="notice notice-error">{error}</div> : null}
+          {visibleError ? <div className="notice notice-error">{visibleError}</div> : null}
 
           {mode === "login" ? (
             <form
               className="form-grid"
               onSubmit={(event) => {
                 event.preventDefault();
-                void onLogin(login);
+                handleLoginSubmit();
               }}
             >
               <InputField
                 label="Логин"
+                minLength={4}
                 onChange={(event) => setLogin((current) => ({ ...current, username: event.target.value }))}
-                placeholder="Например, p.alekseev"
+                placeholder="Введите логин"
                 required
                 value={login.username}
               />
               <InputField
                 label="Пароль"
+                minLength={8}
                 onChange={(event) => setLogin((current) => ({ ...current, password: event.target.value }))}
                 placeholder="Введите пароль"
                 required
@@ -113,7 +143,7 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
                 value={login.password}
               />
               <button className="primary-button" disabled={busy} type="submit">
-                {busy ? "Проверяем..." : "Войти"}
+                {busy ? "Входим..." : "Войти"}
               </button>
             </form>
           ) : (
@@ -121,17 +151,21 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
               className="form-grid form-grid-columns"
               onSubmit={(event) => {
                 event.preventDefault();
-                void onRegister(register);
+                handleRegisterSubmit();
               }}
             >
               <InputField
+                description="Не менее 4 символов"
                 label="Логин"
+                minLength={4}
                 onChange={(event) => setRegister((current) => ({ ...current, username: event.target.value }))}
                 required
                 value={register.username}
               />
               <InputField
+                description="Не менее 8 символов"
                 label="Пароль"
+                minLength={8}
                 onChange={(event) => setRegister((current) => ({ ...current, password: event.target.value }))}
                 required
                 type="password"
@@ -154,7 +188,7 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
                 onChange={(event) =>
                   setRegister((current) => ({
                     ...current,
-                    patronymic: event.target.value.trim() || null,
+                    patronymic: event.target.value,
                   }))
                 }
                 value={register.patronymic ?? ""}
@@ -171,7 +205,7 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
                 onChange={(event) =>
                   setRegister((current) => ({
                     ...current,
-                    phone: event.target.value.trim() || null,
+                    phone: event.target.value,
                   }))
                 }
                 value={register.phone ?? ""}
@@ -199,18 +233,10 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
                 value={register.gender}
               />
               <button className="primary-button" disabled={busy} type="submit">
-                {busy ? "Создаём..." : "Зарегистрироваться"}
+                {busy ? "Сохраняем..." : "Зарегистрироваться"}
               </button>
             </form>
           )}
-        </Panel>
-
-        <Panel eyebrow="Замечание" title="Что убрано из прежнего UI">
-          <ul className="feature-list">
-            <li>Маркетинговые страницы, которые не обращались к backend.</li>
-            <li>Фальшивые кабинеты, emergency-экраны и демонстрационные макеты без API.</li>
-            <li>Всё, что зависело от моков вместо контрактов реальных сервисов.</li>
-          </ul>
         </Panel>
       </section>
     </div>

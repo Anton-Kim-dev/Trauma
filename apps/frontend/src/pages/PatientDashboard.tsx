@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { InputField, SelectField, TextareaField } from "../components/FormControls";
 import { Panel } from "../components/Panel";
-import { combineDateTime, formatDate, formatDateTime, inputDate, personName } from "../lib/format";
+import { combineDateTime, formatDateTime, inputDate, personName } from "../lib/format";
 import type { ApiClient, AppointmentInfo, CreateAppointmentRequest, DoctorInfo, PatientInfo, SessionState } from "../types";
 
 type PatientDashboardProps = {
@@ -38,7 +38,6 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
   const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  const [profile, setProfile] = useState<PatientInfo | null>(null);
   const [profileForm, setProfileForm] = useState<ProfileFormState | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormState>(emptyAppointmentForm);
@@ -65,7 +64,6 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
 
       setDoctors(doctorList);
       setAppointments(appointmentList);
-      setProfile(patientProfile);
       setProfileForm({
         birth_date: inputDate(patientProfile.birth_date),
         email: patientProfile.email,
@@ -80,7 +78,7 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
         doctor_id: current.doctor_id || doctorList.find((doctor) => doctor.is_active)?.id || "",
       }));
     } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить данные пациента.");
+      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить данные кабинета.");
     } finally {
       setLoading(false);
     }
@@ -97,7 +95,7 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
       {requestError ? <div className="notice notice-error">{requestError}</div> : null}
       {message ? <div className="notice notice-success">{message}</div> : null}
 
-      <Panel eyebrow="Профиль пациента" title="Мои данные">
+      <Panel eyebrow="Профиль" title="Мои данные">
         {loading || !profileForm ? (
           <p className="muted-text">Загрузка профиля...</p>
         ) : (
@@ -117,10 +115,18 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
                     phone: profileForm.phone.trim() || null,
                   });
 
-                  setProfile(updatedProfile);
-                  setMessage("Профиль пациента обновлён.");
+                  setProfileForm({
+                    birth_date: inputDate(updatedProfile.birth_date),
+                    email: updatedProfile.email,
+                    first_name: updatedProfile.first_name,
+                    gender: updatedProfile.gender,
+                    last_name: updatedProfile.last_name,
+                    patronymic: updatedProfile.patronymic ?? "",
+                    phone: updatedProfile.phone ?? "",
+                  });
+                  setMessage("Данные пациента обновлены.");
                 } catch (error) {
-                  setRequestError(error instanceof Error ? error.message : "Не удалось обновить профиль.");
+                  setRequestError(error instanceof Error ? error.message : "Не удалось сохранить профиль.");
                 }
               })();
             }}
@@ -181,26 +187,13 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
               value={profileForm.gender}
             />
             <button className="primary-button" type="submit">
-              Сохранить профиль
+              Сохранить данные
             </button>
           </form>
         )}
-
-        {profile ? (
-          <div className="meta-grid">
-            <div className="meta-card">
-              <span>Создан</span>
-              <strong>{formatDate(profile.created_at)}</strong>
-            </div>
-            <div className="meta-card">
-              <span>Обновлён</span>
-              <strong>{formatDate(profile.updated_at)}</strong>
-            </div>
-          </div>
-        ) : null}
       </Panel>
 
-      <Panel eyebrow="Запись на приём" title="Создать новую запись">
+      <Panel eyebrow="Запись" title="Записаться на прием">
         <form
           className="form-grid form-grid-columns"
           onSubmit={(event) => {
@@ -218,7 +211,7 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
                   ...emptyAppointmentForm,
                   doctor_id: activeDoctors[0]?.id || "",
                 });
-                setMessage("Запись создана.");
+                setMessage("Запись успешно создана.");
                 await loadData();
               } catch (error) {
                 setRequestError(error instanceof Error ? error.message : "Не удалось создать запись.");
@@ -227,7 +220,7 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
           }}
         >
           <SelectField
-            label="Врач"
+            label="Специалист"
             onChange={(event) => setAppointmentForm((current) => ({ ...current, doctor_id: event.target.value }))}
             options={[
               { label: "Выберите врача", value: "" },
@@ -255,18 +248,18 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
             value={appointmentForm.time}
           />
           <TextareaField
-            label="Комментарий пациента"
+            label="Комментарий к приему"
             onChange={(event) => setAppointmentForm((current) => ({ ...current, patient_notes: event.target.value }))}
-            placeholder="Кратко опишите жалобу или цель визита"
+            placeholder="Кратко опишите жалобу или причину обращения"
             value={appointmentForm.patient_notes}
           />
           <button className="primary-button" type="submit">
-            Отправить в appointments/create
+            Отправить запись
           </button>
         </form>
       </Panel>
 
-      <Panel eyebrow="Мои записи" title="Текущие приёмы">
+      <Panel eyebrow="Визиты" title="Мои записи">
         {loading ? (
           <p className="muted-text">Загрузка записей...</p>
         ) : appointments.length === 0 ? (
@@ -290,7 +283,7 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
                     </div>
                     <dl className="record-meta">
                       <div>
-                        <dt>Время</dt>
+                        <dt>Дата и время</dt>
                         <dd>{formatDateTime(appointment.start_time)}</dd>
                       </div>
                       <div>
@@ -327,27 +320,6 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
               })}
           </div>
         )}
-      </Panel>
-
-      <Panel eyebrow="Справочник врачей" title="Кого поддерживает backend">
-        <div className="directory-table">
-          <div className="directory-row directory-row-head">
-            <span>Врач</span>
-            <span>Специальность</span>
-            <span>Смена</span>
-            <span>Статус</span>
-          </div>
-          {doctors.map((doctor) => (
-            <div className="directory-row" key={doctor.id}>
-              <span>{personName(doctor)}</span>
-              <span>{doctor.specialty}</span>
-              <span>
-                {doctor.shift_start} - {doctor.shift_end}
-              </span>
-              <span>{doctor.is_active ? "Активен" : "Неактивен"}</span>
-            </div>
-          ))}
-        </div>
       </Panel>
     </div>
   );

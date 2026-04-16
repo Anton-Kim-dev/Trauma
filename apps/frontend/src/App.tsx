@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { PublicLayout } from "./components/PublicLayout";
 import { createApiClient } from "./lib/api";
 import { clearSessionStorage, createSession, loadSession, persistSession } from "./lib/session";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AuthPage } from "./pages/AuthPage";
+import { ContactsPage } from "./pages/ContactsPage";
 import { DoctorDashboard } from "./pages/DoctorDashboard";
+import { HomePage } from "./pages/HomePage";
 import { PatientDashboard } from "./pages/PatientDashboard";
+import { ServicesPage } from "./pages/ServicesPage";
+import { SpecialistsPage } from "./pages/SpecialistsPage";
 import type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, SessionState } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
@@ -47,7 +52,7 @@ const App = () => {
         skipAuth: true,
       });
       const nextSession = createSession(response.access_token, response.refresh_token);
-      if (!nextSession) throw new Error("Backend вернул некорректный access token.");
+      if (!nextSession) throw new Error("Сервер вернул некорректный access token.");
 
       setSession(nextSession);
       persistSession(nextSession);
@@ -72,7 +77,7 @@ const App = () => {
         throw new Error(
           response.result === 1
             ? "Пользователь с таким логином уже существует."
-            : "Backend не смог завершить регистрацию.",
+            : "Не удалось завершить регистрацию.",
         );
       }
 
@@ -99,7 +104,7 @@ const App = () => {
           },
         );
       } catch {
-        // Локальный выход должен отработать даже если logout на backend завершился ошибкой.
+        // Локальный выход должен отработать даже если logout завершился ошибкой.
       }
     }
 
@@ -107,21 +112,17 @@ const App = () => {
     clearSessionStorage();
   };
 
-  const dashboard = session ? (
+  const cabinetContent = session ? (
     <>
       <header className="app-header">
         <div>
-          <p className="hero-kicker">Trauma Team / Operational UI</p>
+          <p className="hero-kicker">Личный кабинет</p>
           <h1 className="header-title">{roleTitle[session.user.user_role]}</h1>
           <p className="header-subtitle">
-            Пользователь <code>{session.user.user_name}</code> работает через backend-контракты без моков и
-            лишних страниц.
+            Пользователь <code>{session.user.user_name}</code>
           </p>
         </div>
         <div className="header-actions">
-          <a className="link-button" href="/docs" rel="noreferrer" target="_blank">
-            Swagger docs
-          </a>
           <button className="secondary-button" onClick={() => void handleLogout()} type="button">
             Выйти
           </button>
@@ -138,14 +139,13 @@ const App = () => {
 
   return (
     <Routes>
-      <Route
-        element={
-          <div className="app-shell">
-            <div className="app-shell-inner">{dashboard}</div>
-          </div>
-        }
-        path="/"
-      />
+      <Route element={<PublicLayout />} path="/">
+        <Route element={<HomePage />} index />
+        <Route element={<ServicesPage />} path="services" />
+        <Route element={<SpecialistsPage />} path="specialists" />
+        <Route element={<ContactsPage />} path="contacts" />
+        <Route element={<div className="page-shell">{cabinetContent}</div>} path="cabinet" />
+      </Route>
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   );

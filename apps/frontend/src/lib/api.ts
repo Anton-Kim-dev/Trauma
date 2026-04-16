@@ -42,11 +42,18 @@ const parseResponse = async (response: Response) => {
 };
 
 const extractMessage = (payload: unknown, fallback: string) => {
-  if (typeof payload === "string" && payload.trim()) return payload;
+  if (typeof payload === "string" && payload.trim()) {
+    const text = payload.trim();
+    if (/<!doctype html|<html|<body|<pre>/i.test(text)) return fallback;
+    if (/^bad request$/i.test(text)) return fallback;
+    return text;
+  }
+
   if (payload && typeof payload === "object" && "message" in payload) {
     const message = (payload as { message?: unknown }).message;
     if (typeof message === "string" && message.trim()) return message;
   }
+
   return fallback;
 };
 
@@ -117,11 +124,10 @@ export const createApiClient = (baseUrl: string, sessionBridge: SessionBridge): 
 
     const payload = await parseResponse(response);
     if (!response.ok) {
-      throw new ApiError(
-        extractMessage(payload, `Запрос завершился ошибкой (${response.status})`),
-        response.status,
-        payload,
-      );
+      const fallback =
+        response.status === 400 ? "Проверьте корректность введенных данных." : `Запрос завершился ошибкой (${response.status})`;
+
+      throw new ApiError(extractMessage(payload, fallback), response.status, payload);
     }
 
     return payload as T;
