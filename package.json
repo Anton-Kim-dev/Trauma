@@ -1,32 +1,21 @@
 {
-  "name": "trauma-sys",
-  "private": true,
-  "workspaces": [
-    "apps/frontend",
-    "apps/backend",
-    "packages/shared"
-  ],
+  "name": "trauma",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "dev:frontend": "npm run dev -w apps/frontend",
-    "dev:backend": "npm run dev -w apps/backend",
-    "dev": "npx concurrently \"npm run dev:frontend\" \"npm run dev:backend\""
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "devDependencies": {
-    "@types/express": "^5.0.6",
-    "@types/pg": "^8.18.0",
-    "@types/swagger-jsdoc": "^6.0.4",
-    "@types/swagger-ui-express": "^4.1.8",
-    "concurrently": "^8.2.0",
-    "cross-env": "^10.1.0",
-    "swagger-autogen": "^2.23.7",
-    "tsup": "^8.5.1"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Anton-Kim-dev/Trauma.git"
   },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.2.1",
-    "cookie": "^1.1.1",
-    "pg": "^8.19.0",
-    "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "zod": "^4.3.6"
-  }
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Anton-Kim-dev/Trauma/issues"
+  },
+  "homepage": "https://github.com/Anton-Kim-dev/Trauma#readme"
 }
