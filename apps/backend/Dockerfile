@@ -3,12 +3,12 @@ WORKDIR /app
 
 COPY package*.json .
 COPY packages/ packages/
-COPY apps/medical-appointment-backend/ apps/medical-appointment-backend/
+COPY apps/backend/ apps/backend/
 
 RUN npm install
-RUN npm run build --workspace=apps/medical-appointment-backend
+RUN npm run build --workspace=apps/backend
 
 ARG SERVICE
 ENV SERVICE=${SERVICE}
 
-CMD node apps/medical-appointment-backend/dist/apps/medical-appointment-backend/src/services/${SERVICE}/index.js
+CMD node apps/backend/dist/apps/backend/src/services/${SERVICE}/index.js
