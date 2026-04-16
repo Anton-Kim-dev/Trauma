@@ -1,0 +1,146 @@
+services:
+  auth-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${AUTH_SERVICE_DB}
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+      - ./database/auth_service/definition.sql:/docker-entrypoint-initdb.d/init.sql
+
+  users-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${USERS_SERVICE_DB}
+    volumes:
+      - users-db-data:/var/lib/postgresql/data
+      - ./database/user_service/definition.sql:/docker-entrypoint-initdb.d/init.sql
+
+  appointments-db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${APPOINTMENTS_SERVICE_DB}
+    volumes:
+      - appointments-db-data:/var/lib/postgresql/data
+      - ./database/appointment_service/definition.sql:/docker-entrypoint-initdb.d/init.sql
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/medical-appointment-backend/Dockerfile
+      args:
+        SERVICE: auth
+    environment:
+      NODE_ENV: production
+      JWT_VER: ${JWT_VER}
+      JWT_EXP: ${JWT_EXP}
+      JWT_REFRESH_EXP: ${JWT_REFRESH_EXP}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SALT: ${JWT_REFRESH_SALT}
+      DB_HOST: auth-db
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      AUTH_SERVICE_DB: ${AUTH_SERVICE_DB}
+      USERS_SERVICE_URL: http://users-service:3002
+      PORT: 3001
+    depends_on:
+      - auth-db
+      - users-service
+    ports:
+      - "3001:3001"
+
+  users-service:
+    build:
+      context: .
+      dockerfile: apps/medical-appointment-backend/Dockerfile
+      args:
+        SERVICE: users
+    environment:
+      NODE_ENV: production
+      JWT_VER: ${JWT_VER}
+      JWT_EXP: ${JWT_EXP}
+      JWT_REFRESH_EXP: ${JWT_REFRESH_EXP}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SALT: ${JWT_REFRESH_SALT}
+      DB_HOST: users-db
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      USERS_SERVICE_DB: ${USERS_SERVICE_DB}
+      PORT: 3002
+    depends_on:
+      - users-db
+    ports:
+      - "3002:3002"
+
+  appointments-service:
+    build:
+      context: .
+      dockerfile: apps/medical-appointment-backend/Dockerfile
+      args:
+        SERVICE: appointments
+    environment:
+      NODE_ENV: production
+      JWT_VER: ${JWT_VER}
+      JWT_EXP: ${JWT_EXP}
+      JWT_REFRESH_EXP: ${JWT_REFRESH_EXP}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SALT: ${JWT_REFRESH_SALT}
+      DB_HOST: appointments-db
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      APPOINTMENTS_SERVICE_DB: ${APPOINTMENTS_SERVICE_DB}
+      USERS_SERVICE_URL: http://users-service:3002/users
+      PORT: 3003
+    depends_on:
+      - appointments-db
+    ports:
+      - "3003:3003"
+
+  docs-service:
+    build:
+      context: .
+      dockerfile: apps/medical-appointment-backend/Dockerfile
+      args:
+        SERVICE: docs
+    environment:
+      NODE_ENV: production
+      PROXY_URL: http://localhost
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/medical-appointment-frontend/Dockerfile
+      args:
+        VITE_API_URL: http://localhost/api/
+    volumes:
+      - frontend-build:/usr/share/nginx/html
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - frontend-build:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend
+      - auth-service
+      - users-service
+      - appointments-service
+
+volumes:
+  auth-db-data:
+  users-db-data:
+  appointments-db-data:
+  frontend-build:
