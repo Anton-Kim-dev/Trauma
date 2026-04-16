@@ -32,7 +32,7 @@ services:
   auth-service:
     build:
       context: .
-      dockerfile: apps/medical-appointment-backend/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       args:
         SERVICE: auth
     environment:
@@ -58,7 +58,7 @@ services:
   users-service:
     build:
       context: .
-      dockerfile: apps/medical-appointment-backend/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       args:
         SERVICE: users
     environment:
@@ -82,7 +82,7 @@ services:
   appointments-service:
     build:
       context: .
-      dockerfile: apps/medical-appointment-backend/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       args:
         SERVICE: appointments
     environment:
@@ -107,7 +107,7 @@ services:
   docs-service:
     build:
       context: .
-      dockerfile: apps/medical-appointment-backend/Dockerfile
+      dockerfile: apps/backend/Dockerfile
       args:
         SERVICE: docs
     environment:
@@ -120,7 +120,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: apps/medical-appointment-frontend/Dockerfile
+      dockerfile: apps/frontend/Dockerfile
       args:
         VITE_API_URL: http://localhost/api/
     volumes:
