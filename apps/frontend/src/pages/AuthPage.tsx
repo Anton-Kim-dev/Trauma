@@ -1,3 +1,4 @@
+import { NavLink } from "react-router-dom";
 import { useState } from "react";
 import { InputField, SelectField } from "../components/FormControls";
 import { Panel } from "../components/Panel";
@@ -81,13 +82,21 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
   };
 
   return (
-    <div className="page-shell">
-      <section className="page-intro">
-        <p className="hero-kicker">Личный кабинет</p>
-        <h1>{mode === "login" ? "Вход в кабинет" : "Регистрация пациента"}</h1>
-      </section>
+    <div className="auth-screen">
+      <div className="auth-window">
+        <div className="auth-window-copy">
+          <p className="hero-kicker">Личный кабинет</p>
+          <h1>{mode === "login" ? "Авторизация" : "Регистрация"}</h1>
+          <p className="hero-text">
+            Войдите в кабинет пациента или создайте новую учетную запись для записи на прием.
+          </p>
+          <div className="hero-actions">
+            <NavLink className="secondary-button" to="/">
+              Вернуться на главную
+            </NavLink>
+          </div>
+        </div>
 
-      <section className="auth-grid">
         <Panel
           action={
             <div className="tab-switcher" role="tablist">
@@ -113,7 +122,7 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
               </button>
             </div>
           }
-          title={mode === "login" ? "Войти" : "Создать учетную запись"}
+          title={mode === "login" ? "Войти в кабинет" : "Создать учетную запись"}
         >
           {visibleError ? <div className="notice notice-error">{visibleError}</div> : null}
 
@@ -148,7 +157,7 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
             </form>
           ) : (
             <form
-              className="form-grid form-grid-columns"
+              className="form-grid auth-form-stack"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleRegisterSubmit();
@@ -238,7 +247,7 @@ export const AuthPage = ({ busy, error, onLogin, onRegister }: AuthPageProps) =>
             </form>
           )}
         </Panel>
-      </section>
+      </div>
     </div>
   );
 };

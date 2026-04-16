@@ -144,8 +144,21 @@ const App = () => {
         <Route element={<ServicesPage />} path="services" />
         <Route element={<SpecialistsPage />} path="specialists" />
         <Route element={<ContactsPage />} path="contacts" />
-        <Route element={<div className="page-shell">{cabinetContent}</div>} path="cabinet" />
       </Route>
+      <Route
+        element={
+          session ? (
+            <div className="app-shell app-shell-compact">
+              <div className="app-shell-inner">
+                <div className="page-shell">{cabinetContent}</div>
+              </div>
+            </div>
+          ) : (
+            <AuthPage busy={authBusy} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
+          )
+        }
+        path="cabinet"
+      />
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   );
