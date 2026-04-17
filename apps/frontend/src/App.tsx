@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect } from "react";
+import { observer } from "mobx-react-lite";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PublicLayout } from "./components/PublicLayout";
-import { createApiClient } from "./lib/api";
-import { clearSessionStorage, createSession, loadSession, persistSession } from "./lib/session";
+import { personName } from "./lib/format";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AuthPage } from "./pages/AuthPage";
 import { ContactsPage } from "./pages/ContactsPage";
@@ -11,9 +11,8 @@ import { HomePage } from "./pages/HomePage";
 import { PatientDashboard } from "./pages/PatientDashboard";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SpecialistsPage } from "./pages/SpecialistsPage";
-import type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, SessionState } from "./types";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+import { useRootStore } from "./stores/storeContext";
+import type { DoctorInfo, PatientInfo } from "./types";
 
 const roleTitle: Record<"P" | "D" | "A", string> = {
   A: "Администратор",
@@ -21,96 +20,35 @@ const roleTitle: Record<"P" | "D" | "A", string> = {
   P: "Пациент",
 };
 
-const App = () => {
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [session, setSession] = useState<SessionState | null>(() => loadSession());
+const isPatientInfo = (value: PatientInfo | DoctorInfo | null): value is PatientInfo =>
+  Boolean(value && "email" in value);
 
-  const api = useMemo(
-    () =>
-      createApiClient(API_BASE_URL, {
-        clear: () => {
-          setSession(null);
-          clearSessionStorage();
-        },
-        get: () => session,
-        save: (nextSession) => {
-          setSession(nextSession);
-          persistSession(nextSession);
-        },
-      }),
-    [session],
+const UserInfoBlock = observer(() => {
+  const { auth, data } = useRootStore();
+  const user = auth.currentUser;
+  const userInfo = data.currentUserInfo;
+
+  if (!user) return null;
+
+  return (
+    <div className="header-user-card">
+      <p className="header-user-label">Информация о пользователе</p>
+      <strong>{userInfo ? personName(userInfo) : user.user_name}</strong>
+      <span>{userInfo && "specialty" in userInfo ? userInfo.specialty : roleTitle[user.user_role]}</span>
+      {isPatientInfo(userInfo) ? <span>{userInfo.email}</span> : null}
+    </div>
   );
+});
 
-  const handleLogin = async (payload: LoginRequest) => {
-    setAuthBusy(true);
-    setAuthError(null);
+const App = observer(() => {
+  const { auth, data } = useRootStore();
+  const session = auth.session;
 
-    try {
-      const response = await api.post<LoginResponse>("/auth/login", payload, {
-        retryOnAuth: false,
-        skipAuth: true,
-      });
-      const nextSession = createSession(response.access_token, response.refresh_token);
-      if (!nextSession) throw new Error("Сервер вернул некорректный access token.");
-
-      setSession(nextSession);
-      persistSession(nextSession);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Не удалось выполнить вход.");
-    } finally {
-      setAuthBusy(false);
+  useEffect(() => {
+    if (session) {
+      void data.loadCurrentUserInfo();
     }
-  };
-
-  const handleRegister = async (payload: RegisterRequest) => {
-    setAuthBusy(true);
-    setAuthError(null);
-
-    try {
-      const response = await api.post<RegisterResponse>("/auth/register", payload, {
-        retryOnAuth: false,
-        skipAuth: true,
-      });
-
-      if (response.result !== 0) {
-        throw new Error(
-          response.result === 1
-            ? "Пользователь с таким логином уже существует."
-            : "Не удалось завершить регистрацию.",
-        );
-      }
-
-      await handleLogin({
-        password: payload.password,
-        username: payload.username,
-      });
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Не удалось зарегистрировать пациента.");
-    } finally {
-      setAuthBusy(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (session?.refreshToken) {
-      try {
-        await api.post<void>(
-          "/auth/logout",
-          { token: session.refreshToken },
-          {
-            retryOnAuth: false,
-            skipAuth: true,
-          },
-        );
-      } catch {
-        // Локальный выход должен отработать даже если logout завершился ошибкой.
-      }
-    }
-
-    setSession(null);
-    clearSessionStorage();
-  };
+  }, [data, session]);
 
   const cabinetContent = session ? (
     <>
@@ -123,18 +61,19 @@ const App = () => {
           </p>
         </div>
         <div className="header-actions">
-          <button className="secondary-button" onClick={() => void handleLogout()} type="button">
+          <UserInfoBlock />
+          <button className="secondary-button" onClick={() => void auth.logout()} type="button">
             Выйти
           </button>
         </div>
       </header>
 
-      {session.user.user_role === "P" ? <PatientDashboard api={api} session={session} /> : null}
-      {session.user.user_role === "D" ? <DoctorDashboard api={api} session={session} /> : null}
-      {session.user.user_role === "A" ? <AdminDashboard api={api} /> : null}
+      {session.user.user_role === "P" ? <PatientDashboard /> : null}
+      {session.user.user_role === "D" ? <DoctorDashboard /> : null}
+      {session.user.user_role === "A" ? <AdminDashboard /> : null}
     </>
   ) : (
-    <AuthPage busy={authBusy} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
+    <AuthPage busy={auth.authBusy} error={auth.authError} onLogin={auth.login} onRegister={auth.register} />
   );
 
   return (
@@ -154,7 +93,7 @@ const App = () => {
               </div>
             </div>
           ) : (
-            <AuthPage busy={authBusy} error={authError} onLogin={handleLogin} onRegister={handleRegister} />
+            <AuthPage busy={auth.authBusy} error={auth.authError} onLogin={auth.login} onRegister={auth.register} />
           )
         }
         path="cabinet"
@@ -162,6 +101,6 @@ const App = () => {
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
   );
-};
+});
 
 export default App;

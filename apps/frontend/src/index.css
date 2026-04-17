@@ -628,6 +628,32 @@ code {
   max-width: 55rem;
 }
 
+.header-user-card {
+  display: grid;
+  gap: 4px;
+  min-width: 220px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.header-user-card strong,
+.header-user-card span,
+.header-user-label {
+  margin: 0;
+}
+
+.header-user-card span,
+.header-user-label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.header-user-label {
+  font-weight: 700;
+}
+
 @media (max-width: 980px) {
   .hero,
   .auth-grid,

@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { observer } from "mobx-react-lite";
 import { InputField, SelectField } from "../components/FormControls";
 import { Panel } from "../components/Panel";
 import { formatDateTime, personName } from "../lib/format";
-import type { AddUserRequest, ApiClient, AppointmentInfo, DoctorInfo, PatientInfo } from "../types";
-
-type AdminDashboardProps = {
-  api: ApiClient;
-};
+import { useRootStore } from "../stores/storeContext";
+import type { AddUserRequest } from "../types";
 
 const emptyUserForm: AddUserRequest = {
   birth_date: "",
@@ -21,50 +19,28 @@ const emptyUserForm: AddUserRequest = {
   username: "",
 };
 
-export const AdminDashboard = ({ api }: AdminDashboardProps) => {
-  const [appointments, setAppointments] = useState<AppointmentInfo[]>([]);
-  const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+export const AdminDashboard = observer(() => {
+  const { data } = useRootStore();
   const [message, setMessage] = useState<string | null>(null);
-  const [patients, setPatients] = useState<PatientInfo[]>([]);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [userForm, setUserForm] = useState<AddUserRequest>(emptyUserForm);
 
   const names = useMemo(() => {
     const map = new Map<string, string>();
-    patients.forEach((patient) => map.set(patient.id, personName(patient)));
-    doctors.forEach((doctor) => map.set(doctor.id, `${personName(doctor)} (${doctor.specialty})`));
+    data.patients.forEach((patient) => map.set(patient.id, personName(patient)));
+    data.doctors.forEach((doctor) => map.set(doctor.id, `${personName(doctor)} (${doctor.specialty})`));
     return map;
-  }, [doctors, patients]);
-
-  const loadData = async () => {
-    setLoading(true);
-    setRequestError(null);
-
-    try {
-      const [doctorList, patientList, appointmentList] = await Promise.all([
-        api.get<DoctorInfo[]>("/users/doctors/get"),
-        api.get<PatientInfo[]>("/users/patients/get"),
-        api.get<AppointmentInfo[]>("/appointments/get"),
-      ]);
-
-      setDoctors(doctorList);
-      setPatients(patientList);
-      setAppointments(appointmentList);
-    } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить административный раздел.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [data.doctors, data.patients]);
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    void data.loadDashboardData();
+  }, [data]);
+
+  const pageError = requestError ?? data.requestError;
 
   return (
     <div className="dashboard-grid">
-      {requestError ? <div className="notice notice-error">{requestError}</div> : null}
+      {pageError ? <div className="notice notice-error">{pageError}</div> : null}
       {message ? <div className="notice notice-success">{message}</div> : null}
 
       <Panel eyebrow="Пользователи" title="Создать пользователя">
@@ -74,7 +50,8 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
             event.preventDefault();
             void (async () => {
               try {
-                const response = await api.post<{ result: number; userId: string | null }>("/auth/admin/add_user", {
+                setRequestError(null);
+                const response = await data.addUser({
                   ...userForm,
                   patronymic: userForm.patronymic?.trim() || null,
                   phone: userForm.phone?.trim() || null,
@@ -90,7 +67,6 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
 
                 setUserForm(emptyUserForm);
                 setMessage("Новый пользователь добавлен.");
-                await loadData();
               } catch (error) {
                 setRequestError(error instanceof Error ? error.message : "Не удалось создать пользователя.");
               }
@@ -194,11 +170,11 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
       </Panel>
 
       <Panel eyebrow="Приемы" title="Журнал записей">
-        {loading ? (
+        {data.loading ? (
           <p className="muted-text">Загрузка записей...</p>
         ) : (
           <div className="list-grid">
-            {appointments.map((appointment) => (
+            {data.appointments.map((appointment) => (
               <article className="record-card" key={appointment.id}>
                 <div className="record-head">
                   <div>
@@ -227,11 +203,9 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
                   onClick={() => {
                     void (async () => {
                       try {
-                        await api.post<boolean>("/appointments/cancel", {
-                          appointment_id: appointment.id,
-                        });
+                        setRequestError(null);
+                        await data.cancelAppointment(appointment.id);
                         setMessage("Запись отменена администратором.");
-                        await loadData();
                       } catch (error) {
                         setRequestError(error instanceof Error ? error.message : "Не удалось отменить запись.");
                       }
@@ -248,4 +222,4 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
       </Panel>
     </div>
   );
-};
+});
