@@ -41,21 +41,6 @@ const emptyAppointmentForm: AppointmentFormState = {
   time: "",
 };
 
-const PatientDoctorsSummary = () => {
-  const { data: doctors = [], isLoading } = useGetDoctorsQuery();
-  const activeCount = doctors.filter((doctor) => doctor.is_active).length;
-
-  return (
-    <Panel eyebrow="Доступность" title="Информация для пациента">
-      <p className="muted-text">
-        {isLoading
-          ? "Загрузка данных о специалистах..."
-          : `Сейчас доступно специалистов: ${activeCount}. Эти же данные используются в форме записи и берутся из кэша RTK Query.`}
-      </p>
-    </Panel>
-  );
-};
-
 export const PatientDashboard = ({ session }: PatientDashboardProps) => {
   const { data: appointments = [], error: appointmentsError, isLoading: appointmentsLoading } = useGetAppointmentsQuery();
   const { data: doctors = [], error: doctorsError, isLoading: doctorsLoading } = useGetDoctorsQuery();
@@ -209,8 +194,6 @@ export const PatientDashboard = ({ session }: PatientDashboardProps) => {
           </form>
         )}
       </Panel>
-
-      <PatientDoctorsSummary />
 
       <Panel eyebrow="Запись" title="Записаться на прием">
         <form
