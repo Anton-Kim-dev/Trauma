@@ -112,24 +112,24 @@ services:
         SERVICE: docs
     environment:
       NODE_ENV: production
-      PROXY_URL: http://localhost
+      PROXY_URL: http://localhost:8080
       PORT: 3000
     ports:
-      - "3000:3000"
+      - "3004:3000"
 
   frontend:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
       args:
-        VITE_API_URL: http://localhost/api/
+        VITE_API_URL: /api/
     volumes:
       - frontend-build:/usr/share/nginx/html
 
   nginx:
     image: nginx:alpine
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - frontend-build:/usr/share/nginx/html
       - ./nginx.conf:/etc/nginx/nginx.conf
