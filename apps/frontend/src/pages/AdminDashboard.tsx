@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { InputField, SelectField } from "../components/FormControls";
 import { Panel } from "../components/Panel";
 import { formatDateTime, personName } from "../lib/format";
-import type { AddUserRequest, ApiClient, AppointmentInfo, DoctorInfo, PatientInfo } from "../types";
-
-type AdminDashboardProps = {
-  api: ApiClient;
-};
+import { getErrorMessage } from "../lib/queryError";
+import {
+  useAddUserMutation,
+  useCancelAppointmentMutation,
+  useGetAppointmentsQuery,
+  useGetDoctorsQuery,
+  useGetPatientsQuery,
+} from "../store/apiSlice";
+import type { AddUserRequest } from "../types";
 
 const emptyUserForm: AddUserRequest = {
   birth_date: "",
@@ -21,14 +25,20 @@ const emptyUserForm: AddUserRequest = {
   username: "",
 };
 
-export const AdminDashboard = ({ api }: AdminDashboardProps) => {
-  const [appointments, setAppointments] = useState<AppointmentInfo[]>([]);
-  const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+export const AdminDashboard = () => {
+  const { data: appointments = [], error: appointmentsError, isLoading: appointmentsLoading } = useGetAppointmentsQuery();
+  const { data: doctors = [], error: doctorsError, isLoading: doctorsLoading } = useGetDoctorsQuery();
+  const { data: patients = [], error: patientsError, isLoading: patientsLoading } = useGetPatientsQuery();
+  const [addUser] = useAddUserMutation();
+  const [cancelAppointment] = useCancelAppointmentMutation();
   const [message, setMessage] = useState<string | null>(null);
-  const [patients, setPatients] = useState<PatientInfo[]>([]);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [userForm, setUserForm] = useState<AddUserRequest>(emptyUserForm);
+  const loading = appointmentsLoading || doctorsLoading || patientsLoading;
+  const queryError =
+    getErrorMessage(doctorsError, "Не удалось загрузить врачей.") ||
+    getErrorMessage(patientsError, "Не удалось загрузить пациентов.") ||
+    getErrorMessage(appointmentsError, "Не удалось загрузить записи.");
 
   const names = useMemo(() => {
     const map = new Map<string, string>();
@@ -37,34 +47,9 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
     return map;
   }, [doctors, patients]);
 
-  const loadData = async () => {
-    setLoading(true);
-    setRequestError(null);
-
-    try {
-      const [doctorList, patientList, appointmentList] = await Promise.all([
-        api.get<DoctorInfo[]>("/users/doctors/get"),
-        api.get<PatientInfo[]>("/users/patients/get"),
-        api.get<AppointmentInfo[]>("/appointments/get"),
-      ]);
-
-      setDoctors(doctorList);
-      setPatients(patientList);
-      setAppointments(appointmentList);
-    } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить административный раздел.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadData();
-  }, []);
-
   return (
     <div className="dashboard-grid">
-      {requestError ? <div className="notice notice-error">{requestError}</div> : null}
+      {queryError || requestError ? <div className="notice notice-error">{requestError || queryError}</div> : null}
       {message ? <div className="notice notice-success">{message}</div> : null}
 
       <Panel eyebrow="Пользователи" title="Создать пользователя">
@@ -74,11 +59,12 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
             event.preventDefault();
             void (async () => {
               try {
-                const response = await api.post<{ result: number; userId: string | null }>("/auth/admin/add_user", {
+                setRequestError(null);
+                const response = await addUser({
                   ...userForm,
                   patronymic: userForm.patronymic?.trim() || null,
                   phone: userForm.phone?.trim() || null,
-                });
+                }).unwrap();
 
                 if (response.result !== 0) {
                   throw new Error(
@@ -90,9 +76,8 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
 
                 setUserForm(emptyUserForm);
                 setMessage("Новый пользователь добавлен.");
-                await loadData();
               } catch (error) {
-                setRequestError(error instanceof Error ? error.message : "Не удалось создать пользователя.");
+                setRequestError(getErrorMessage(error, "Не удалось создать пользователя."));
               }
             })();
           }}
@@ -227,13 +212,13 @@ export const AdminDashboard = ({ api }: AdminDashboardProps) => {
                   onClick={() => {
                     void (async () => {
                       try {
-                        await api.post<boolean>("/appointments/cancel", {
+                        setRequestError(null);
+                        await cancelAppointment({
                           appointment_id: appointment.id,
-                        });
+                        }).unwrap();
                         setMessage("Запись отменена администратором.");
-                        await loadData();
                       } catch (error) {
-                        setRequestError(error instanceof Error ? error.message : "Не удалось отменить запись.");
+                        setRequestError(getErrorMessage(error, "Не удалось отменить запись."));
                       }
                     })();
                   }}

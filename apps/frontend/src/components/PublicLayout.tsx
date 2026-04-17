@@ -23,7 +23,7 @@ export const PublicLayout = () => (
         <nav className="site-nav">
           {navigation.map((item) => (
             <NavLink
-              className={({ isActive }) => (isActive ? "site-nav-link is-active" : "site-nav-link")}
+              className={({ isActive }: { isActive: boolean }) => (isActive ? "site-nav-link is-active" : "site-nav-link")}
               key={item.to}
               to={item.to}
             >

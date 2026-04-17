@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { PublicLayout } from "./components/PublicLayout";
-import { createApiClient } from "./lib/api";
-import { clearSessionStorage, createSession, loadSession, persistSession } from "./lib/session";
+import { createSession } from "./lib/session";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AuthPage } from "./pages/AuthPage";
 import { ContactsPage } from "./pages/ContactsPage";
@@ -11,9 +10,10 @@ import { HomePage } from "./pages/HomePage";
 import { PatientDashboard } from "./pages/PatientDashboard";
 import { ServicesPage } from "./pages/ServicesPage";
 import { SpecialistsPage } from "./pages/SpecialistsPage";
-import type { LoginRequest, LoginResponse, RegisterRequest, RegisterResponse, SessionState } from "./types";
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
+import { apiSlice, useLoginMutation, useLogoutMutation, useRegisterMutation } from "./store/apiSlice";
+import { clearCredentials, setCredentials } from "./store/authSlice";
+import { useAppDispatch, useAppSelector } from "./store";
+import type { LoginRequest, RegisterRequest } from "./types";
 
 const roleTitle: Record<"P" | "D" | "A", string> = {
   A: "Администратор",
@@ -22,40 +22,24 @@ const roleTitle: Record<"P" | "D" | "A", string> = {
 };
 
 const App = () => {
+  const dispatch = useAppDispatch();
+  const session = useAppSelector((state) => state.auth.session);
+  const [login] = useLoginMutation();
+  const [logout] = useLogoutMutation();
+  const [register] = useRegisterMutation();
   const [authBusy, setAuthBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [session, setSession] = useState<SessionState | null>(() => loadSession());
-
-  const api = useMemo(
-    () =>
-      createApiClient(API_BASE_URL, {
-        clear: () => {
-          setSession(null);
-          clearSessionStorage();
-        },
-        get: () => session,
-        save: (nextSession) => {
-          setSession(nextSession);
-          persistSession(nextSession);
-        },
-      }),
-    [session],
-  );
 
   const handleLogin = async (payload: LoginRequest) => {
     setAuthBusy(true);
     setAuthError(null);
 
     try {
-      const response = await api.post<LoginResponse>("/auth/login", payload, {
-        retryOnAuth: false,
-        skipAuth: true,
-      });
+      const response = await login(payload).unwrap();
       const nextSession = createSession(response.access_token, response.refresh_token);
       if (!nextSession) throw new Error("Сервер вернул некорректный access token.");
 
-      setSession(nextSession);
-      persistSession(nextSession);
+      dispatch(setCredentials(nextSession));
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "Не удалось выполнить вход.");
     } finally {
@@ -68,10 +52,7 @@ const App = () => {
     setAuthError(null);
 
     try {
-      const response = await api.post<RegisterResponse>("/auth/register", payload, {
-        retryOnAuth: false,
-        skipAuth: true,
-      });
+      const response = await register(payload).unwrap();
 
       if (response.result !== 0) {
         throw new Error(
@@ -95,21 +76,14 @@ const App = () => {
   const handleLogout = async () => {
     if (session?.refreshToken) {
       try {
-        await api.post<void>(
-          "/auth/logout",
-          { token: session.refreshToken },
-          {
-            retryOnAuth: false,
-            skipAuth: true,
-          },
-        );
+        await logout({ token: session.refreshToken }).unwrap();
       } catch {
         // Локальный выход должен отработать даже если logout завершился ошибкой.
       }
     }
 
-    setSession(null);
-    clearSessionStorage();
+    dispatch(clearCredentials());
+    dispatch(apiSlice.util.resetApiState());
   };
 
   const cabinetContent = session ? (
@@ -129,9 +103,9 @@ const App = () => {
         </div>
       </header>
 
-      {session.user.user_role === "P" ? <PatientDashboard api={api} session={session} /> : null}
-      {session.user.user_role === "D" ? <DoctorDashboard api={api} session={session} /> : null}
-      {session.user.user_role === "A" ? <AdminDashboard api={api} /> : null}
+      {session.user.user_role === "P" ? <PatientDashboard session={session} /> : null}
+      {session.user.user_role === "D" ? <DoctorDashboard /> : null}
+      {session.user.user_role === "A" ? <AdminDashboard /> : null}
     </>
   ) : (
     <AuthPage busy={authBusy} error={authError} onLogin={handleLogin} onRegister={handleRegister} />

@@ -2,10 +2,18 @@ import { useEffect, useMemo, useState } from "react";
 import { InputField, SelectField, TextareaField } from "../components/FormControls";
 import { Panel } from "../components/Panel";
 import { combineDateTime, formatDateTime, inputDate, personName } from "../lib/format";
-import type { ApiClient, AppointmentInfo, CreateAppointmentRequest, DoctorInfo, PatientInfo, SessionState } from "../types";
+import { getErrorMessage } from "../lib/queryError";
+import {
+  useCancelAppointmentMutation,
+  useCreateAppointmentMutation,
+  useGetAppointmentsQuery,
+  useGetDoctorsQuery,
+  useGetPatientInfoQuery,
+  useUpdatePatientMutation,
+} from "../store/apiSlice";
+import type { CreateAppointmentRequest, DoctorInfo, SessionState } from "../types";
 
 type PatientDashboardProps = {
-  api: ApiClient;
   session: SessionState;
 };
 
@@ -33,14 +41,38 @@ const emptyAppointmentForm: AppointmentFormState = {
   time: "",
 };
 
-export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
-  const [appointments, setAppointments] = useState<AppointmentInfo[]>([]);
-  const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+const PatientDoctorsSummary = () => {
+  const { data: doctors = [], isLoading } = useGetDoctorsQuery();
+  const activeCount = doctors.filter((doctor) => doctor.is_active).length;
+
+  return (
+    <Panel eyebrow="Доступность" title="Информация для пациента">
+      <p className="muted-text">
+        {isLoading
+          ? "Загрузка данных о специалистах..."
+          : `Сейчас доступно специалистов: ${activeCount}. Эти же данные используются в форме записи и берутся из кэша RTK Query.`}
+      </p>
+    </Panel>
+  );
+};
+
+export const PatientDashboard = ({ session }: PatientDashboardProps) => {
+  const { data: appointments = [], error: appointmentsError, isLoading: appointmentsLoading } = useGetAppointmentsQuery();
+  const { data: doctors = [], error: doctorsError, isLoading: doctorsLoading } = useGetDoctorsQuery();
+  const { data: patientProfile, error: profileError, isLoading: profileLoading } = useGetPatientInfoQuery(session.user.user_id);
+  const [cancelAppointment] = useCancelAppointmentMutation();
+  const [createAppointment] = useCreateAppointmentMutation();
+  const [updatePatient] = useUpdatePatientMutation();
   const [message, setMessage] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState<ProfileFormState | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [appointmentForm, setAppointmentForm] = useState<AppointmentFormState>(emptyAppointmentForm);
+
+  const loading = appointmentsLoading || doctorsLoading || profileLoading;
+  const queryError =
+    getErrorMessage(doctorsError, "Не удалось загрузить список врачей.") ||
+    getErrorMessage(appointmentsError, "Не удалось загрузить записи.") ||
+    getErrorMessage(profileError, "Не удалось загрузить профиль.");
 
   const doctorsById = useMemo(
     () =>
@@ -51,48 +83,32 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
     [doctors],
   );
 
-  const loadData = async () => {
-    setLoading(true);
-    setRequestError(null);
+  useEffect(() => {
+    if (!patientProfile) return;
 
-    try {
-      const [doctorList, appointmentList, patientProfile] = await Promise.all([
-        api.get<DoctorInfo[]>("/users/doctors/get"),
-        api.get<AppointmentInfo[]>("/appointments/get"),
-        api.get<PatientInfo>(`/users/patients/info?id=${session.user.user_id}`),
-      ]);
-
-      setDoctors(doctorList);
-      setAppointments(appointmentList);
-      setProfileForm({
-        birth_date: inputDate(patientProfile.birth_date),
-        email: patientProfile.email,
-        first_name: patientProfile.first_name,
-        gender: patientProfile.gender,
-        last_name: patientProfile.last_name,
-        patronymic: patientProfile.patronymic ?? "",
-        phone: patientProfile.phone ?? "",
-      });
-      setAppointmentForm((current) => ({
-        ...current,
-        doctor_id: current.doctor_id || doctorList.find((doctor) => doctor.is_active)?.id || "",
-      }));
-    } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить данные кабинета.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setProfileForm({
+      birth_date: inputDate(patientProfile.birth_date),
+      email: patientProfile.email,
+      first_name: patientProfile.first_name,
+      gender: patientProfile.gender,
+      last_name: patientProfile.last_name,
+      patronymic: patientProfile.patronymic ?? "",
+      phone: patientProfile.phone ?? "",
+    });
+  }, [patientProfile]);
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    setAppointmentForm((current) => ({
+      ...current,
+      doctor_id: current.doctor_id || doctors.find((doctor) => doctor.is_active)?.id || "",
+    }));
+  }, [doctors]);
 
   const activeDoctors = doctors.filter((doctor) => doctor.is_active);
 
   return (
     <div className="dashboard-grid">
-      {requestError ? <div className="notice notice-error">{requestError}</div> : null}
+      {queryError || requestError ? <div className="notice notice-error">{requestError || queryError}</div> : null}
       {message ? <div className="notice notice-success">{message}</div> : null}
 
       <Panel eyebrow="Профиль" title="Мои данные">
@@ -105,7 +121,8 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
               event.preventDefault();
               void (async () => {
                 try {
-                  const updatedProfile = await api.post<PatientInfo>("/users/patients/update", {
+                  setRequestError(null);
+                  const updatedProfile = await updatePatient({
                     birth_date: profileForm.birth_date,
                     email: profileForm.email,
                     first_name: profileForm.first_name,
@@ -113,7 +130,7 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
                     last_name: profileForm.last_name,
                     patronymic: profileForm.patronymic.trim() || null,
                     phone: profileForm.phone.trim() || null,
-                  });
+                  }).unwrap();
 
                   setProfileForm({
                     birth_date: inputDate(updatedProfile.birth_date),
@@ -126,7 +143,7 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
                   });
                   setMessage("Данные пациента обновлены.");
                 } catch (error) {
-                  setRequestError(error instanceof Error ? error.message : "Не удалось сохранить профиль.");
+                  setRequestError(getErrorMessage(error, "Не удалось сохранить профиль."));
                 }
               })();
             }}
@@ -193,6 +210,8 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
         )}
       </Panel>
 
+      <PatientDoctorsSummary />
+
       <Panel eyebrow="Запись" title="Записаться на прием">
         <form
           className="form-grid form-grid-columns"
@@ -200,21 +219,21 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
             event.preventDefault();
             void (async () => {
               try {
+                setRequestError(null);
                 const payload: CreateAppointmentRequest = {
                   doctor_id: appointmentForm.doctor_id,
                   patient_notes: appointmentForm.patient_notes.trim() || null,
                   start_time: combineDateTime(appointmentForm.date, appointmentForm.time),
                 };
 
-                await api.post<AppointmentInfo>("/appointments/create", payload);
+                await createAppointment(payload).unwrap();
                 setAppointmentForm({
                   ...emptyAppointmentForm,
                   doctor_id: activeDoctors[0]?.id || "",
                 });
                 setMessage("Запись успешно создана.");
-                await loadData();
               } catch (error) {
-                setRequestError(error instanceof Error ? error.message : "Не удалось создать запись.");
+                setRequestError(getErrorMessage(error, "Не удалось создать запись."));
               }
             })();
           }}
@@ -301,13 +320,13 @@ export const PatientDashboard = ({ api, session }: PatientDashboardProps) => {
                       onClick={() => {
                         void (async () => {
                           try {
-                            await api.post<boolean>("/appointments/cancel", {
+                            setRequestError(null);
+                            await cancelAppointment({
                               appointment_id: appointment.id,
-                            });
+                            }).unwrap();
                             setMessage("Запись отменена.");
-                            await loadData();
                           } catch (error) {
-                            setRequestError(error instanceof Error ? error.message : "Не удалось отменить запись.");
+                            setRequestError(getErrorMessage(error, "Не удалось отменить запись."));
                           }
                         })();
                       }}

@@ -96,7 +96,3 @@ export interface AddUserRequest extends RegisterRequest {
   role: UserRole;
 }
 
-export interface ApiClient {
-  get<T>(path: string, init?: RequestInit & { retryOnAuth?: boolean; skipAuth?: boolean }): Promise<T>;
-  post<T>(path: string, body?: unknown, init?: RequestInit & { retryOnAuth?: boolean; skipAuth?: boolean }): Promise<T>;
-}

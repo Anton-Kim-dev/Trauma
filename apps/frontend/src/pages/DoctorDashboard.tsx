@@ -2,20 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import { TextareaField } from "../components/FormControls";
 import { Panel } from "../components/Panel";
 import { formatDateTime, personName } from "../lib/format";
-import type { ApiClient, AppointmentInfo, PatientInfo, SessionState } from "../types";
+import { getErrorMessage } from "../lib/queryError";
+import {
+  useCancelAppointmentMutation,
+  useCompleteAppointmentMutation,
+  useGetAppointmentsQuery,
+  useGetPatientsQuery,
+} from "../store/apiSlice";
+import type { PatientInfo } from "../types";
 
-type DoctorDashboardProps = {
-  api: ApiClient;
-  session: SessionState;
-};
-
-export const DoctorDashboard = ({ api }: DoctorDashboardProps) => {
-  const [appointments, setAppointments] = useState<AppointmentInfo[]>([]);
-  const [loading, setLoading] = useState(true);
+export const DoctorDashboard = () => {
+  const { data: appointments = [], error: appointmentsError, isLoading: appointmentsLoading } = useGetAppointmentsQuery();
+  const { data: patients = [], error: patientsError, isLoading: patientsLoading } = useGetPatientsQuery();
+  const [cancelAppointment] = useCancelAppointmentMutation();
+  const [completeAppointment] = useCompleteAppointmentMutation();
   const [message, setMessage] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
-  const [patients, setPatients] = useState<PatientInfo[]>([]);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const loading = appointmentsLoading || patientsLoading;
+  const queryError =
+    getErrorMessage(appointmentsError, "Не удалось загрузить записи врача.") ||
+    getErrorMessage(patientsError, "Не удалось загрузить пациентов.");
 
   const patientsById = useMemo(
     () =>
@@ -26,38 +33,18 @@ export const DoctorDashboard = ({ api }: DoctorDashboardProps) => {
     [patients],
   );
 
-  const loadData = async () => {
-    setLoading(true);
-    setRequestError(null);
-
-    try {
-      const [appointmentList, patientList] = await Promise.all([
-        api.get<AppointmentInfo[]>("/appointments/get"),
-        api.get<PatientInfo[]>("/users/patients/get"),
-      ]);
-
-      setAppointments(appointmentList);
-      setPatients(patientList);
-      setNoteDrafts(
-        appointmentList.reduce<Record<string, string>>((accumulator, appointment) => {
-          accumulator[appointment.id] = appointment.doctor_notes ?? "";
-          return accumulator;
-        }, {}),
-      );
-    } catch (error) {
-      setRequestError(error instanceof Error ? error.message : "Не удалось загрузить кабинет врача.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    void loadData();
-  }, []);
+    setNoteDrafts((current) =>
+      appointments.reduce<Record<string, string>>((accumulator, appointment) => {
+        accumulator[appointment.id] = current[appointment.id] ?? appointment.doctor_notes ?? "";
+        return accumulator;
+      }, {}),
+    );
+  }, [appointments]);
 
   return (
     <div className="dashboard-grid">
-      {requestError ? <div className="notice notice-error">{requestError}</div> : null}
+      {queryError || requestError ? <div className="notice notice-error">{requestError || queryError}</div> : null}
       {message ? <div className="notice notice-success">{message}</div> : null}
 
       <Panel eyebrow="Приемы" title="Список записей">
@@ -115,14 +102,14 @@ export const DoctorDashboard = ({ api }: DoctorDashboardProps) => {
                       onClick={() => {
                         void (async () => {
                           try {
-                            await api.post<AppointmentInfo>("/appointments/complete", {
+                            setRequestError(null);
+                            await completeAppointment({
                               appointment_id: appointment.id,
                               doctor_notes: noteDrafts[appointment.id],
-                            });
+                            }).unwrap();
                             setMessage("Прием завершен.");
-                            await loadData();
                           } catch (error) {
-                            setRequestError(error instanceof Error ? error.message : "Не удалось завершить прием.");
+                            setRequestError(getErrorMessage(error, "Не удалось завершить прием."));
                           }
                         })();
                       }}
@@ -136,13 +123,13 @@ export const DoctorDashboard = ({ api }: DoctorDashboardProps) => {
                       onClick={() => {
                         void (async () => {
                           try {
-                            await api.post<boolean>("/appointments/cancel", {
+                            setRequestError(null);
+                            await cancelAppointment({
                               appointment_id: appointment.id,
-                            });
+                            }).unwrap();
                             setMessage("Прием отменен.");
-                            await loadData();
                           } catch (error) {
-                            setRequestError(error instanceof Error ? error.message : "Не удалось отменить прием.");
+                            setRequestError(getErrorMessage(error, "Не удалось отменить прием."));
                           }
                         })();
                       }}
