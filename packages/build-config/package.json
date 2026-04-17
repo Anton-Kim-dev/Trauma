@@ -1,0 +1,9 @@
+{
+  "name": "@trauma/build-config",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "exports": {
+    "./webpack/createConfig": "./webpack/createConfig.cjs"
+  }
+}

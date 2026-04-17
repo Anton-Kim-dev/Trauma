@@ -24,3 +24,4 @@ apps/*/*.env.production
 
 .docker/
 docker-compose.override.yml
+.codex-logs/

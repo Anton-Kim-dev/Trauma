@@ -1,0 +1,1 @@
+export type UserRole = "P" | "D" | "A";

@@ -67,6 +67,7 @@ export const PatientDashboard = ({ session }: PatientDashboardProps) => {
       }, {}),
     [doctors],
   );
+  const firstActiveDoctorId = useMemo(() => doctors.find((doctor) => doctor.is_active)?.id ?? "", [doctors]);
 
   useEffect(() => {
     if (!patientProfile) return;
@@ -83,11 +84,17 @@ export const PatientDashboard = ({ session }: PatientDashboardProps) => {
   }, [patientProfile]);
 
   useEffect(() => {
-    setAppointmentForm((current) => ({
-      ...current,
-      doctor_id: current.doctor_id || doctors.find((doctor) => doctor.is_active)?.id || "",
-    }));
-  }, [doctors]);
+    if (!firstActiveDoctorId) return;
+
+    setAppointmentForm((current) =>
+      current.doctor_id
+        ? current
+        : {
+            ...current,
+            doctor_id: firstActiveDoctorId,
+          },
+    );
+  }, [firstActiveDoctorId]);
 
   const activeDoctors = doctors.filter((doctor) => doctor.is_active);
 

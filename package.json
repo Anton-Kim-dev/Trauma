@@ -4,15 +4,24 @@
   "private": true,
   "description": "",
   "workspaces": [
+    "apps/host",
     "apps/frontend",
     "apps/backend",
-    "packages/shared"
+    "Trauma-mobx/apps/frontend",
+    "packages/shared",
+    "packages/build-config"
   ],
   "scripts": {
-    "dev:frontend": "npm run dev -w apps/frontend",
+    "dev:host": "npm run dev -w apps/host",
+    "dev:redux": "npm run dev -w apps/frontend",
+    "dev:mobx": "npm run dev -w Trauma-mobx/apps/frontend",
+    "dev:frontend": "npx concurrently \"npm run dev:host\" \"npm run dev:redux\" \"npm run dev:mobx\"",
     "dev:backend": "npm run dev -w apps/backend",
-    "dev": "npx concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "build:frontend": "npm run build -w apps/frontend",
+    "dev": "npm run dev:frontend",
+    "build:host": "npm run build -w apps/host",
+    "build:redux": "npm run build -w apps/frontend",
+    "build:mobx": "npm run build -w Trauma-mobx/apps/frontend",
+    "build:frontend": "npm run build:host && npm run build:redux && npm run build:mobx",
     "build:backend": "npm run build -w apps/backend"
   },
   "repository": {
@@ -28,6 +37,17 @@
   },
   "homepage": "https://github.com/Anton-Kim-dev/Trauma#readme",
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "@types/node": "^24.7.2",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "concurrently": "^8.2.0",
+    "css-loader": "^7.1.2",
+    "html-webpack-plugin": "^5.6.0",
+    "style-loader": "^4.0.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.8.3",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.0"
   }
 }
