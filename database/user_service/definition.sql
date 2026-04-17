@@ -49,16 +49,16 @@ ON CONFLICT DO NOTHING;
 
 WITH doctor_data (user_id, specialty, first_name, last_name, patronymic, notes, is_active, work_days, shift_start, shift_end, slot_minutes) AS (
     VALUES
-        ('3cb6e7a1-bfa2-4575-bc08-9606cac8c7ec'::UUID, 'Cardiology',       'Дмитрий',   'Иванов',    'Сергеевич',    'Experienced cardiologist',     TRUE,  124, TIME '08:00', TIME '16:00', 30),
-        ('fd1dab24-a90d-4e8e-b05c-92bcc1cb12e5'::UUID, 'Neurology',        'Алексей',   'Петров',    'Владимирович', 'Specializes in migraines',     TRUE,  124, TIME '09:00', TIME '17:00', 30),
-        ('59edb842-9298-4bce-8938-ea1fffddc06e'::UUID, 'Orthopedics',      'Игорь',     'Сидоров',   'Николаевич',   'Joint replacement specialist', TRUE,  124, TIME '07:00', TIME '13:00', 45),
-        ('6a382f85-9c61-4b23-bff4-e0c9bdd894ce'::UUID, 'Dermatology',      'Сергей',    'Кузнецов',  'Иванович',     'Skin allergy expert',          FALSE, 124, TIME '10:00', TIME '16:00', 20),
-        ('b2e60245-de8f-4064-b967-6fdee3c724b4'::UUID, 'Pediatrics',       'Андрей',    'Морозов',   'Павлович',     'Works with children under 12', TRUE,  124, TIME '08:00', TIME '14:00', 20),
-        ('0e5650f7-7eed-40a8-8745-3234db5dddaf'::UUID, 'Ophthalmology',    'Ольга',     'Волкова',   'Дмитриевна',   'Laser correction certified',   TRUE,  124, TIME '09:00', TIME '17:00', 30),
-        ('08e2b7d9-f1d2-4b07-8328-c3e9c870e2fd'::UUID, 'Endocrinology',    'Наталья',   'Новикова',  'Алексеевна',   'Diabetes management focus',    TRUE,  124, TIME '11:00', TIME '17:00', 30),
-        ('500cf761-f6e5-474d-8a88-62648afd20ea'::UUID, 'Psychiatry',       'Елена',     'Соколова',  'Геннадьевна',  'CBT and anxiety disorders',    FALSE, 124, TIME '13:00', TIME '19:00', 60),
-        ('b22b321f-ee09-4974-a6dd-14a3a3852a64'::UUID, 'Gastroenterology', 'Ирина',     'Лебедева',  'Олеговна',     'Endoscopy certified',          TRUE,  124, TIME '08:00', TIME '14:00', 30),
-        ('af8fc80c-dbf4-4c0d-805e-9a58a40cd66b'::UUID, 'General Practice', 'Мария',     'Козлова',   'Юрьевна',      'Primary care physician',       TRUE,  124, TIME '08:00', TIME '16:00', 15)
+        ('3cb6e7a1-bfa2-4575-bc08-9606cac8c7ec'::UUID, 'Кардиология',      'Дмитрий',   'Иванов',    'Сергеевич',    'Experienced cardiologist',     TRUE,  124, TIME '08:00', TIME '16:00', 30),
+        ('fd1dab24-a90d-4e8e-b05c-92bcc1cb12e5'::UUID, 'Неврология',       'Алексей',   'Петров',    'Владимирович', 'Specializes in migraines',     TRUE,  124, TIME '09:00', TIME '17:00', 30),
+        ('59edb842-9298-4bce-8938-ea1fffddc06e'::UUID, 'Ортопедия',        'Игорь',     'Сидоров',   'Николаевич',   'Joint replacement specialist', TRUE,  124, TIME '07:00', TIME '13:00', 45),
+        ('6a382f85-9c61-4b23-bff4-e0c9bdd894ce'::UUID, 'Дерматология',     'Сергей',    'Кузнецов',  'Иванович',     'Skin allergy expert',          FALSE, 124, TIME '10:00', TIME '16:00', 20),
+        ('b2e60245-de8f-4064-b967-6fdee3c724b4'::UUID, 'Педиатрия',        'Андрей',    'Морозов',   'Павлович',     'Works with children under 12', TRUE,  124, TIME '08:00', TIME '14:00', 20),
+        ('0e5650f7-7eed-40a8-8745-3234db5dddaf'::UUID, 'Офтальмология',    'Ольга',     'Волкова',   'Дмитриевна',   'Laser correction certified',   TRUE,  124, TIME '09:00', TIME '17:00', 30),
+        ('08e2b7d9-f1d2-4b07-8328-c3e9c870e2fd'::UUID, 'Эндокринология',   'Наталья',   'Новикова',  'Алексеевна',   'Diabetes management focus',    TRUE,  124, TIME '11:00', TIME '17:00', 30),
+        ('500cf761-f6e5-474d-8a88-62648afd20ea'::UUID, 'Психиатрия',       'Елена',     'Соколова',  'Геннадьевна',  'CBT and anxiety disorders',    FALSE, 124, TIME '13:00', TIME '19:00', 60),
+        ('b22b321f-ee09-4974-a6dd-14a3a3852a64'::UUID, 'Гастроэнтерология','Ирина',     'Лебедева',  'Олеговна',     'Endoscopy certified',          TRUE,  124, TIME '08:00', TIME '14:00', 30),
+        ('af8fc80c-dbf4-4c0d-805e-9a58a40cd66b'::UUID, 'Терапия',          'Мария',     'Козлова',   'Юрьевна',      'Primary care physician',       TRUE,  124, TIME '08:00', TIME '16:00', 15)
 )
 INSERT INTO doctors (user_id, specialty, first_name, last_name, patronymic, notes, is_active, work_days, shift_start, shift_end, slot_minutes)
 SELECT user_id, specialty, first_name, last_name, patronymic, notes, is_active, work_days, shift_start, shift_end, slot_minutes

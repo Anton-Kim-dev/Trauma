@@ -5,7 +5,7 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/users/doctors": {
+    "/api/users/doctors/get": {
       "get": {
         "tags": ["Doctors"],
         "summary": "Get all doctors",
@@ -53,7 +53,7 @@
         }
       }
     },
-    "/api/users/patients": {
+    "/api/users/patients/get": {
       "get": {
         "tags": ["Patients"],
         "summary": "Get all patients",
