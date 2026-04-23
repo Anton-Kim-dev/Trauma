@@ -32,98 +32,167 @@ services:
   auth-service:
     build:
       context: .
-      dockerfile: apps/backend/Dockerfile
-      args:
-        SERVICE: auth
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: npm run dev -w apps/backend
+    volumes:
+      - .:/app
+      - workspace-node-modules:/app/node_modules
     environment:
       NODE_ENV: development
-      JWT_VER: ${JWT_VER}
-      JWT_EXP: ${JWT_EXP}
-      JWT_REFRESH_EXP: ${JWT_REFRESH_EXP}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SALT: ${JWT_REFRESH_SALT}
+      SERVICE: auth
+      PORT: 3101
       DB_HOST: auth-db
       DB_PORT: ${DB_PORT}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       AUTH_SERVICE_DB: ${AUTH_SERVICE_DB}
-      USERS_SERVICE_URL: http://users-service:3002
-      PORT: 3001
-    depends_on:
-      - auth-db
-      - users-service
-    ports:
-      - "3001:3001"
-
-  users-service:
-    build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
-      args:
-        SERVICE: users
-    environment:
-      NODE_ENV: development
+      USERS_SERVICE_URL: http://users-service:3102
       JWT_VER: ${JWT_VER}
       JWT_EXP: ${JWT_EXP}
       JWT_REFRESH_EXP: ${JWT_REFRESH_EXP}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SALT: ${JWT_REFRESH_SALT}
+    depends_on:
+      - auth-db
+      - users-service
+    ports:
+      - "3101:3101"
+
+  users-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: npm run dev -w apps/backend
+    volumes:
+      - .:/app
+      - workspace-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      SERVICE: users
+      PORT: 3102
       DB_HOST: users-db
       DB_PORT: ${DB_PORT}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       USERS_SERVICE_DB: ${USERS_SERVICE_DB}
-      PORT: 3002
-    depends_on:
-      - users-db
-    ports:
-      - "3002:3002"
-
-  appointments-service:
-    build:
-      context: .
-      dockerfile: apps/backend/Dockerfile
-      args:
-        SERVICE: appointments
-    environment:
-      NODE_ENV: development
       JWT_VER: ${JWT_VER}
       JWT_EXP: ${JWT_EXP}
       JWT_REFRESH_EXP: ${JWT_REFRESH_EXP}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SALT: ${JWT_REFRESH_SALT}
+    depends_on:
+      - users-db
+    ports:
+      - "3102:3102"
+
+  appointments-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: npm run dev -w apps/backend
+    volumes:
+      - .:/app
+      - workspace-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      SERVICE: appointments
+      PORT: 3103
       DB_HOST: appointments-db
       DB_PORT: ${DB_PORT}
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       APPOINTMENTS_SERVICE_DB: ${APPOINTMENTS_SERVICE_DB}
-      USERS_SERVICE_URL: http://users-service:3002/users
-      PORT: 3003
+      USERS_SERVICE_URL: http://users-service:3102/users
+      JWT_VER: ${JWT_VER}
+      JWT_EXP: ${JWT_EXP}
+      JWT_REFRESH_EXP: ${JWT_REFRESH_EXP}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SALT: ${JWT_REFRESH_SALT}
     depends_on:
       - appointments-db
     ports:
-      - "3003:3003"
+      - "3103:3103"
 
   docs-service:
     build:
       context: .
-      dockerfile: apps/backend/Dockerfile
-      args:
-        SERVICE: docs
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: npm run dev -w apps/backend
+    volumes:
+      - .:/app
+      - workspace-node-modules:/app/node_modules
     environment:
       NODE_ENV: development
+      SERVICE: docs
+      PORT: 3100
       PROXY_URL: http://localhost:8080
-      PORT: 3000
     ports:
-      - "3004:3000"
+      - "3104:3100"
+
+  host:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: npm run dev:host
+    volumes:
+      - .:/app
+      - workspace-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      VITE_API_URL: /api
+      DASHBOARD_URL: /dashboard
+      MEDICAL_URL: /medical
+    ports:
+      - "3000:3000"
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: npm run dev:dashboard
+    volumes:
+      - .:/app
+      - workspace-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      VITE_API_URL: /api
+    ports:
+      - "3001:3001"
+
+  medical:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    working_dir: /app
+    command: npm run dev:medical
+    volumes:
+      - .:/app
+      - workspace-node-modules:/app/node_modules
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+      VITE_API_URL: /api
+    ports:
+      - "3002:3002"
 
   nginx:
     image: nginx:alpine
     ports:
       - "8080:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx.dev.conf:/etc/nginx/nginx.conf
     depends_on:
+      - host
+      - dashboard
+      - medical
       - auth-service
       - users-service
       - appointments-service
@@ -133,3 +202,4 @@ volumes:
   auth-db-data:
   users-db-data:
   appointments-db-data:
+  workspace-node-modules:

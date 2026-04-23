@@ -4,15 +4,20 @@
   "private": true,
   "description": "",
   "workspaces": [
-    "apps/frontend",
+    "apps/host",
+    "apps/dashboard",
+    "apps/medical",
     "apps/backend",
-    "packages/shared"
+    "packages/shared",
+    "packages/webpack-config"
   ],
   "scripts": {
-    "dev:frontend": "npm run dev -w apps/frontend",
+    "dev:host": "npm start -w @trauma/host",
+    "dev:dashboard": "npm start -w @trauma/dashboard",
+    "dev:medical": "npm start -w @trauma/medical",
     "dev:backend": "npm run dev -w apps/backend",
-    "dev": "npx concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
-    "build:frontend": "npm run build -w apps/frontend",
+    "dev": "npx concurrently \"npm run dev:host\" \"npm run dev:dashboard\" \"npm run dev:medical\" \"npm run dev:backend\"",
+    "build:frontend": "npm run build -w @trauma/host && npm run build -w @trauma/dashboard && npm run build -w @trauma/medical",
     "build:backend": "npm run build -w apps/backend"
   },
   "repository": {
@@ -28,6 +33,12 @@
   },
   "homepage": "https://github.com/Anton-Kim-dev/Trauma#readme",
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   }
 }

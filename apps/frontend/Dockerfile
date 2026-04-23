@@ -2,22 +2,34 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 ARG VITE_API_URL=/api
-ENV VITE_API_URL=${VITE_API_URL}
+ARG DASHBOARD_URL=/dashboard
+ARG MEDICAL_URL=/medical
 
-COPY apps/frontend/package.json ./
-COPY apps/frontend/tsconfig.json ./
-COPY apps/frontend/tsconfig.app.json ./
-COPY apps/frontend/tsconfig.node.json ./
-COPY apps/frontend/vite.config.ts ./
-COPY apps/frontend/index.html ./
-COPY apps/frontend/src ./src
+ENV VITE_API_URL=${VITE_API_URL}
+ENV DASHBOARD_URL=${DASHBOARD_URL}
+ENV MEDICAL_URL=${MEDICAL_URL}
+
+COPY package*.json ./
+COPY packages/shared/package.json packages/shared/
+COPY packages/webpack-config/package.json packages/webpack-config/
+COPY apps/host/package.json apps/host/
+COPY apps/dashboard/package.json apps/dashboard/
+COPY apps/medical/package.json apps/medical/
 
 RUN npm install
-RUN npm run build
+
+COPY packages/ packages/
+COPY apps/host/ apps/host/
+COPY apps/dashboard/ apps/dashboard/
+COPY apps/medical/ apps/medical/
+
+RUN npm run build:frontend
 
 FROM alpine:3.20
 WORKDIR /app
-RUN apk add --no-cache bash
-COPY --from=build /app/dist /build
 
-CMD ["sh", "-c", "mkdir -p /usr/share/nginx/html && rm -rf /usr/share/nginx/html/* && cp -r /build/. /usr/share/nginx/html && tail -f /dev/null"]
+COPY --from=build /app/apps/host/dist /build/host
+COPY --from=build /app/apps/dashboard/dist /build/dashboard
+COPY --from=build /app/apps/medical/dist /build/medical
+
+CMD ["sh", "-c", "mkdir -p /usr/share/nginx/html/dashboard /usr/share/nginx/html/medical && cp -r /build/host/. /usr/share/nginx/html/ && cp -r /build/dashboard/. /usr/share/nginx/html/dashboard/ && cp -r /build/medical/. /usr/share/nginx/html/medical/ && tail -f /dev/null"]
